@@ -1,4 +1,4 @@
-
+# Render Free: PHP + Apache, no paid domain required.
 FROM php:8.3-apache
 
 RUN a2enmod rewrite headers \

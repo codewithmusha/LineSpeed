@@ -1,82 +1,66 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/includes/site.php';
-// Issue a per-session token. It deters casual hotlinking of bandwidth-intensive endpoints.
-$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_name('linespeed_session');
-    session_set_cookie_params(['lifetime' => 0, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Lax']);
-    session_start();
+  session_name('linespeed_session');
+  session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>$secure,'httponly'=>true,'samesite'=>'Lax']);
+  session_start();
 }
-if (!isset($_SESSION['speed_test_token'])) {
-    $_SESSION['speed_test_token'] = bin2hex(random_bytes(24));
-}
-$token = (string) $_SESSION['speed_test_token'];
+if (!isset($_SESSION['speed_test_token'])) $_SESSION['speed_test_token']=bin2hex(random_bytes(24));
+$token=(string)$_SESSION['speed_test_token'];
 session_write_close();
 header('Cache-Control: private, no-store');
-pageStart('', 'Free internet speed test. Check download speed, upload speed, ping and jitter in your browser, then save your results as a PNG image.', '', 'test');
+pageStart('Free Internet Speed Test – Check Wi-Fi & Mobile Data Speed', 'Test download speed, upload speed, ping and jitter. See your approximate network provider, get an easy-to-read connection report and save a PNG result.', '', 'test');
 ?>
 <main id="main">
-  <section class="hero container" aria-labelledby="hero-title">
-    <div class="hero-copy">
-      <p class="eyebrow"><span class="eyebrow-rule" aria-hidden="true"></span> INTERNET SPEED TEST, MADE SIMPLE</p>
-      <h1 id="hero-title">Know your speed.<br><span class="emphasis">Skip the guesswork.</span></h1>
-      <p class="hero-description">A clean, straightforward way to check your internet connection. Get real measurements for download, upload, ping and jitter — right in your browser.</p>
-      <div class="hero-proof"><span class="proof-icon" aria-hidden="true">✓</span> No account needed <span class="proof-separator" aria-hidden="true">/</span> No app to install</div>
-      <div class="hero-note"><span class="note-number">01 / 03</span><span>TEST YOUR CONNECTION<br>UNDERSTAND THE NUMBERS<br>SAVE YOUR RESULT</span></div>
+<section class="hero" aria-labelledby="hero-title">
+<div class="container">
+  <div class="hero-intro"><p class="eyebrow"><span class="eyebrow-dash"></span><span data-i18n="eyebrow">YOUR CONNECTION, EXPLAINED</span></p><h1 id="hero-title" data-i18n="heroTitle">Know your speed.<br>Know your connection.</h1><p data-i18n="heroSubtitle">One tap. Real measurements. A clearer picture of your internet.</p></div>
+  <div class="hero-shell">
+    <div class="test-panel" data-test-token="<?= esc($token) ?>" data-phase="idle" aria-label="Internet speed test">
+      <div class="test-top"><span class="live-status"><i id="status-dot" aria-hidden="true"></i><span id="connection-label" data-i18n="ready">READY TO TEST</span></span><span class="secure-label"><span aria-hidden="true">●</span> <span data-i18n="noSignup">NO SIGN-UP NEEDED</span></span></div>
+      <div class="meter-layout">
+        <div class="circle-wrap"><div class="circle-meter">
+          <svg class="circular-gauge" viewBox="0 0 320 320" aria-hidden="true"><circle class="gauge-track" cx="160" cy="160" r="141" pathLength="100"/><circle class="gauge-progress" id="gauge-progress" cx="160" cy="160" r="141" pathLength="100"/><circle class="gauge-inside" cx="160" cy="160" r="124"/></svg>
+          <button class="go-button" id="test-button" type="button" aria-describedby="test-detail"><span class="go-word" id="go-word">GO</span><span class="live-reading" id="speed-value" hidden>0.0</span><span class="live-unit" id="speed-unit" hidden>Mbps</span><span class="go-caption" id="button-label" data-i18n="startTest">START TEST</span></button>
+        </div></div>
+        <div class="test-message"><div class="test-steps" aria-label="Testing progress"><span class="test-step" data-step="ping"><span class="step-check">1</span><span data-i18n="ping">Ping</span></span><span class="line"></span><span class="test-step" data-step="download"><span class="step-check">2</span><span data-i18n="download">Download</span></span><span class="line"></span><span class="test-step" data-step="upload"><span class="step-check">3</span><span data-i18n="upload">Upload</span></span></div><h2 id="test-status" role="status" aria-live="polite" data-i18n="readyWhen">Ready when you are</h2><p id="test-detail" data-i18n="tapGo">Tap GO to test your connection</p></div>
+      </div>
+      <div class="measurement-grid" aria-label="Your speed test results">
+        <div class="measure-cell"><span class="measure-name"><b>↓</b> <span data-i18n="download">DOWNLOAD</span></span><div class="measure-value"><span id="download-value">—</span> <small>Mbps</small></div></div>
+        <div class="measure-cell"><span class="measure-name"><b>↑</b> <span data-i18n="upload">UPLOAD</span></span><div class="measure-value"><span id="upload-value">—</span> <small>Mbps</small></div></div>
+        <div class="measure-cell"><span class="measure-name"><b>↔</b> <span data-i18n="ping">PING</span></span><div class="measure-value"><span id="ping-value">—</span> <small>ms</small></div></div>
+        <div class="measure-cell"><span class="measure-name"><b>≋</b> <span data-i18n="jitter">JITTER</span></span><div class="measure-value"><span id="jitter-value">—</span> <small>ms</small></div></div>
+      </div>
+      <div class="test-footer"><button class="download-result" id="download-button" type="button" disabled><span aria-hidden="true">↓</span> <span data-i18n="saveImage">Save result as image</span></button><span id="last-tested" data-i18n="notTested">NOT TESTED YET</span></div>
+      <p class="test-disclaimer" data-i18n="testNote">Results measure your browser's connection to this website's server and can vary. Testing uses internet data.</p>
     </div>
-
-    <section class="test-panel" aria-label="Internet speed tester" data-test-token="<?= esc($token) ?>">
-      <div class="panel-heading"><span class="panel-kicker"><span class="status-indicator" id="status-dot"></span> CONNECTION CHECK</span><span class="panel-counter">LIVE TEST / 001</span></div>
-      <div class="meter-area">
-        <div class="meter-graphic" aria-hidden="true">
-          <svg class="speed-arc" viewBox="0 0 440 250" role="presentation">
-            <path d="M 70 203 A 150 150 0 0 1 370 203" class="arc-track" pathLength="100" />
-            <path id="gauge-progress" d="M 70 203 A 150 150 0 0 1 370 203" class="arc-progress" pathLength="100" />
-            <g class="arc-ticks" stroke="currentColor" stroke-linecap="round" stroke-width="2" opacity=".45"><path d="M48 205h12"/><path d="M380 205h12"/><path d="M220 33v11"/></g>
-          </svg>
-          <div class="meter-reading" aria-live="off"><span class="meter-number" id="speed-value">0.0</span><span class="meter-unit">Mbps</span></div>
-        </div>
-        <p class="meter-caption" id="test-status" aria-live="polite">Ready when you are</p>
-        <p class="meter-subcaption" id="test-detail">Press the button to measure your connection</p>
-      </div>
-      <div class="measurement-grid" aria-label="Speed test results">
-        <div class="measure-cell"><div class="measure-name"><span class="mini-arrow down-arrow">↓</span> DOWNLOAD</div><div class="measure-value"><span id="download-value">—</span><small>Mbps</small></div></div>
-        <div class="measure-cell"><div class="measure-name"><span class="mini-arrow up-arrow">↑</span> UPLOAD</div><div class="measure-value"><span id="upload-value">—</span><small>Mbps</small></div></div>
-        <div class="measure-cell"><div class="measure-name"><span class="mini-icon" aria-hidden="true">◷</span> PING</div><div class="measure-value"><span id="ping-value">—</span><small>ms</small></div></div>
-        <div class="measure-cell"><div class="measure-name"><span class="mini-icon" aria-hidden="true">⌁</span> JITTER</div><div class="measure-value"><span id="jitter-value">—</span><small>ms</small></div></div>
-      </div>
-      <div class="test-controls"><button id="test-button" class="button button-primary" type="button"><span id="button-label">Start speed test</span><span class="button-arrow" aria-hidden="true">↗</span></button><button id="download-button" class="button button-outline" type="button" disabled><svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 17v3h16v-3"/></svg> Save result as PNG</button></div>
-      <div class="panel-bottom"><span>● Approximate browser-to-server test</span><span id="last-tested">NO TEST YET</span></div>
-    </section>
-  </section>
-
-  <section class="metrics-explainer" aria-labelledby="measure-title">
-    <div class="container">
-      <div class="section-top"><span class="section-label">THE ESSENTIALS <span>— 01</span></span><h2 id="measure-title">Four numbers.<br><span>One clearer picture.</span></h2><p>It's not just about how fast a page loads. These four measurements tell you how your connection behaves.</p></div>
-      <div class="explain-grid">
-        <article class="explain-card"><div class="card-number">01 <span>↙</span></div><h3>Download speed</h3><p>How quickly your connection receives data — useful for watching videos, browsing and downloading files.</p><span class="card-foot">MEASURED IN Mbps</span></article>
-        <article class="explain-card"><div class="card-number">02 <span>↗</span></div><h3>Upload speed</h3><p>How quickly you can send data — useful for video calls, cloud backups and sharing large files.</p><span class="card-foot">MEASURED IN Mbps</span></article>
-        <article class="explain-card"><div class="card-number">03 <span>◎</span></div><h3>Ping</h3><p>How long a small request takes to reach our test server and return. Lower times usually feel more responsive.</p><span class="card-foot">MEASURED IN ms</span></article>
-        <article class="explain-card"><div class="card-number">04 <span>≈</span></div><h3>Jitter</h3><p>How much the response time varies from one request to the next. Lower variation helps calls stay smooth.</p><span class="card-foot">MEASURED IN ms</span></article>
-      </div>
-    </div>
-  </section>
-
-  <section class="knowledge-section container" aria-labelledby="know-title">
-    <div class="knowledge-left"><span class="section-label">USEFUL TO KNOW <span>— 02</span></span><h2 id="know-title">Numbers are good.<br><span>Context is better.</span></h2><p>A speed test is a snapshot of your connection to a particular server. Results may change throughout the day.</p><a class="text-link" href="/speed-guide.php">Explore the speed guide <span aria-hidden="true">↗</span></a></div>
-    <div class="knowledge-right"><div class="info-row"><span>01</span><div><h3>Use a stable connection</h3><p>Move closer to your Wi-Fi router, or use Ethernet if you want a more consistent reading.</p></div></div><div class="info-row"><span>02</span><div><h3>Pause heavy downloads</h3><p>Streaming, updates and cloud backups can affect the results during your test.</p></div></div><div class="info-row"><span>03</span><div><h3>Test more than once</h3><p>Try different times of day to understand what your connection typically delivers.</p></div></div></div>
-  </section>
-
-  <section class="faq-section" aria-labelledby="faq-title"><div class="container faq-layout"><div><span class="section-label">QUICK ANSWERS <span>— 03</span></span><h2 id="faq-title">Good questions.<br><span>Clear answers.</span></h2></div><div class="faq-items">
-    <details><summary>Is this internet speed test free?<span aria-hidden="true">+</span></summary><p>Yes. You can run the test without an account or payment. Your internet provider may still count the transferred data toward your data allowance.</p></details>
-    <details><summary>Why is my result different from another speed test?<span aria-hidden="true">+</span></summary><p>Different tests can use different servers, connection methods and data sizes. Network congestion, Wi-Fi signal and device performance also make a difference. This tool measures your connection to the server hosting this website.</p></details>
-    <details><summary>Does the test work on mobile phones?<span aria-hidden="true">+</span></summary><p>Yes. It works in modern mobile browsers, including on Wi-Fi and mobile data. Keep an eye on data usage if you have a limited plan.</p></details>
-    <details><summary>How can I save my speed test result?<span aria-hidden="true">+</span></summary><p>Run a test and select “Save result as PNG.” A shareable image with your measured values and test date will download to your device.</p></details>
-    <details><summary>Is ping the same as gaming latency?<span aria-hidden="true">+</span></summary><p>Not exactly. Our ping reading is based on small browser requests to this website's server, not ICMP ping to your game's server. Your gaming latency can be different.</p></details>
-  </div></div></section>
-
-  <div class="container ending-banner"><span class="ending-star" aria-hidden="true">✳</span><div><h2>Less guessing. Better connecting.</h2><p>Your connection, your numbers. Whenever you need them.</p></div><a href="#main">Back to speed test <span aria-hidden="true">↑</span></a></div>
+    <aside class="passport" aria-labelledby="passport-title">
+      <div class="passport-head"><div><span class="small-label" data-i18n="passportLabel">CONNECTION PASSPORT</span><h2 id="passport-title" data-i18n="passportTitle">Your network, at a glance.</h2></div><span class="passport-icon" aria-hidden="true">↗</span></div>
+      <div class="passport-main"><span class="passport-caption" data-i18n="provider">Network provider</span><strong id="isp-name" aria-live="polite" data-i18n="detecting">Detecting…</strong><p class="pass-sub" data-i18n="ispApprox">Approximate name from your public IP address.</p></div>
+      <div class="passport-row"><div><span data-i18n="location">Country</span><strong id="country-name">—</strong></div><div><span data-i18n="device">Device</span><strong id="device-name">—</strong></div></div>
+      <div class="passport-footer"><span class="passport-live"><i></i><span data-i18n="browserTest">BROWSER-BASED TEST</span></span><button id="network-refresh" class="refresh-network" type="button" data-i18n="refresh">Refresh</button></div>
+      <p class="passport-caution" data-i18n="providerNote">VPNs and network routing can change the provider shown.</p>
+      <p class="credit" id="network-credit" hidden>Network lookup by <a href="https://ipinfo.io" target="_blank" rel="noopener noreferrer">IPinfo</a></p>
+    </aside>
+  </div>
+  <div class="hero-bottom"><span>01 / 03</span><span data-i18n="heroFoot">MADE FOR REAL CONNECTIONS</span><span>↓</span></div>
+</div>
+</section>
+<section class="insight-section" id="connection-report" aria-labelledby="insight-title"><div class="container insight-layout">
+  <div class="insight-heading"><span class="section-index">01 — <span data-i18n="understand">UNDERSTAND</span></span><h2 id="insight-title" data-i18n="reportTitle">Numbers are good.<br>Answers are better.</h2><p data-i18n="reportDesc">After your test, get a simple guide to what your connection may handle.</p><a href="/speed-guide.php" class="text-link"><span data-i18n="speedGuide">Explore the speed guide</span><span aria-hidden="true">↗</span></a></div>
+  <div class="insight-cards">
+    <div class="insight-card"><div><span class="activity-symbol">▶</span><span data-i18n="streaming">Streaming</span></div><strong id="streaming-verdict" data-i18n="testFirst">Run a test first</strong><p id="streaming-detail" data-i18n="streamingDesc">Get a guide for watching your favourite shows.</p></div>
+    <div class="insight-card"><div><span class="activity-symbol">▣</span><span data-i18n="calls">Video calls</span></div><strong id="calls-verdict" data-i18n="testFirst">Run a test first</strong><p id="calls-detail" data-i18n="callsDesc">See whether calls may feel smooth.</p></div>
+    <div class="insight-card"><div><span class="activity-symbol">◎</span><span data-i18n="gaming">Gaming</span></div><strong id="gaming-verdict" data-i18n="testFirst">Run a test first</strong><p id="gaming-detail" data-i18n="gamingDesc">Check response times for online play.</p></div>
+    <p class="insight-disclaimer" data-i18n="guidanceNote">These are simple guidelines, not guaranteed performance ratings.</p>
+  </div>
+</div></section>
+<section class="devices-section" aria-labelledby="device-title"><div class="container"><div class="devices-heading"><div><span class="section-index">02 — <span data-i18n="anyDevice">ANY DEVICE</span></span><h2 id="device-title" data-i18n="devicesTitle">Wherever you're connected.</h2></div><p data-i18n="devicesDesc">No app needed. Use LineSpeed in a modern browser on almost any screen.</p></div>
+<div class="device-grid"><div><span aria-hidden="true">▯</span><h3 data-i18n="phones">Phones</h3><p data-i18n="phoneDetail">Android & iPhone</p></div><div><span aria-hidden="true">▭</span><h3 data-i18n="tablets">Tablets</h3><p data-i18n="tabletDetail">iPad & Android tablets</p></div><div><span aria-hidden="true">⌁</span><h3 data-i18n="laptops">Laptops</h3><p data-i18n="laptopDetail">MacBook & Windows</p></div><div><span aria-hidden="true">▣</span><h3 data-i18n="desktops">Desktops</h3><p data-i18n="desktopDetail">PC, Mac & Linux</p></div></div>
+<a href="/devices.php" class="device-link"><span data-i18n="deviceHelp">Read device compatibility</span> ↗</a>
+</div></section>
 </main>
-<script src="/assets/js/app.js?v=1.0" defer></script>
+<script src="/assets/js/app.js?v=3.0" defer></script>
 <?php pageEnd(); ?>
