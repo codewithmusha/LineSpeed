@@ -1,0 +1,7 @@
+<?php
+declare(strict_types=1);
+require_once __DIR__ . '/includes/site.php';
+pageStart('About Us', 'Learn why LineSpeed was created and how our browser-based internet speed test helps people understand their connections.', 'about.php');
+?>
+<main id="main"><header class="page-hero container"><span class="section-label">ABOUT THE PROJECT</span><h1>Better information.<br>Less internet confusion.</h1><p><?= esc(SITE_NAME) ?> is a simple, independent tool for understanding everyday connection performance.</p></header><div class="article-shell container"><aside class="article-aside">Our purpose</aside><article class="article-body"><h2>What we're building</h2><p>We believe people should be able to check their connection without installing an app, creating an account or reading complicated technical instructions. <?= esc(SITE_NAME) ?> makes it easy to see four useful measurements and save them as a PNG report.</p><h2>Clarity comes first</h2><p>We explain what each reading means and what can affect it. Our speed test sends and receives real data between your browser and this website's server. We also make clear that results are estimates rather than guaranteed speeds from your internet provider.</p><h2>For everyone</h2><p>Whether you're comparing Wi-Fi rooms, troubleshooting a slow call or checking a new connection, we want the experience to be quick and understandable on desktop and mobile devices.</p><a class="content-back" href="/">← Try the speed test</a></article></div></main>
+<?php pageEnd(); ?>
